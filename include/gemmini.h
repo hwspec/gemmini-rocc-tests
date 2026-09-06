@@ -75,6 +75,7 @@
 #define LAYERNORM 2
 #define IGELU 3
 #define SOFTMAX 4
+#define ITANH 5
 
 #ifdef ELEM_T_IS_FLOAT
 static elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
@@ -2209,7 +2210,7 @@ static void tiled_conv(
         const acc_t * bias,
         elem_t * output,
 
-        int act, acc_scale_t scale,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type) {
@@ -2312,6 +2313,17 @@ static void tiled_conv(
         batch_size * out_channels * sizeof(elem_t) :
         out_stride * sizeof(elem_t);
     gemmini_extended_config_st(st_dram_stride, act, scale);
+
+
+    if (act == ITANH) {
+      const acc_scale_t S = bert_scale;
+      const acc_scale_t S_erf = -0.3215 * S*S;
+
+      const acc_t qb = -1.6939 / S;
+      const acc_t qc = 0.9179 / S_erf;
+
+      gemmini_config_norm(0, 0, 0, 1, 0, qb, qc);
+    }
 
     gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, false);
 
@@ -2674,7 +2686,7 @@ static void tiled_conv_stride_auto(
         const acc_t * bias,
         elem_t * output,
 
-        int act, acc_scale_t scale,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type) {
@@ -2850,7 +2862,7 @@ static void tiled_conv_stride_auto(
         bias,
         output,
 
-        act, scale,
+        act, scale, bert_scale,
         pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
         tiled_conv_type);
@@ -2869,7 +2881,7 @@ _STATIC void tiled_conv_auto(
         const acc_t * bias,
         elem_t * output,
 
-        int act, acc_scale_t scale,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type) {
@@ -2887,7 +2899,7 @@ _STATIC void tiled_conv_auto(
 
         input, weights, bias, output,
 
-        act, scale, pool_size, pool_stride, pool_padding,
+        act, scale, bert_scale, pool_size, pool_stride, pool_padding,
         tiled_conv_type);
 
 }
