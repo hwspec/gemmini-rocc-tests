@@ -2312,7 +2312,7 @@ static void tiled_conv(
     const size_t st_dram_stride = trans_output_1203 ?
         batch_size * out_channels * sizeof(elem_t) :
         out_stride * sizeof(elem_t);
-    gemmini_extended_config_st(st_dram_stride, act, scale);
+    gemmini_extended_config_st(st_dram_stride, act & 3, scale); // masking act to 2 bit
 
 
     if (act == ITANH) {
@@ -2571,7 +2571,7 @@ static void tiled_conv_dw(
 #endif
 
     const size_t st_dram_stride = channels * sizeof(elem_t);
-    gemmini_extended_config_st(st_dram_stride, act, scale);
+    gemmini_extended_config_st(st_dram_stride, act & 3, scale);
 
     gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 1, stride, false, false, false);
 
