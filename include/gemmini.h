@@ -299,8 +299,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_st(stride) \
     gemmini_extended_config_st(stride, NO_ACTIVATION, ACC_SCALE_IDENTITY)
 
-#define gemmini_config_norm(q_const, q_const_type, set_stats_id_only, act_msb, stat_id, igelu_qb, igelu_qc) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 1) << 18) | ((set_stats_id_only & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
+#define gemmini_config_norm(q_const, q_const_type, set_stats_id_only, act_msb, stat_id, igelu_qb, igelu_qc_lo) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 3) << 18) | ((set_stats_id_only & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc_lo)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
 
 // flush
 #define gemmini_flush(skip) \
@@ -2320,9 +2320,12 @@ static void tiled_conv(
       const acc_scale_t S_erf = -0.3215 * S*S;
 
       const acc_t qb = -1.6939 / S;
-      const acc_t qc = 0.9179 / S_erf;
+      //const acc_t qc = 0.9179 / S_erf;
+	  const full_t qc_wide = llround(0.9179 / S_erf);
+	  const acc_t qc_hi = (acc_t)(qc_wide >> 32);
+	  const acc_t qc_lo = (acc_t)(qc_wide & 0xFFFFFFFF);
 
-      gemmini_config_norm(0, 0, 0, 1, 0, qb, qc);
+      gemmini_config_norm(qc_hi, 2, 0, 1, 0, qb, qc_lo);
     }
 
     gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, false);
