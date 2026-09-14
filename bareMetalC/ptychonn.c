@@ -129,7 +129,7 @@ static void run_decoder(const gemmini_conv_layer_t *layers, elem_t *output) {
                   false, false, false, false, false,
                   (elem_t *)dec_f_up, (elem_t *)layers[6].weight, (acc_t *)layers[6].bias,
                   (elem_t *)output, ITANH,
-                  layers[6].requant_scale, layers[6].bias_scale, 0, 0, 0, WS);
+                  /* scale = S_erf * pi / gemmini_phase_scale.output_scale */ -5.256340e-10, layers[6].bias_scale, 0, 0, 0, WS);
 
   //const float out_scale = layers[6].output_scale;
   //for (int i = 0; i < 64 * 64; i++) {
